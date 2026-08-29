@@ -27,7 +27,6 @@ export class RaceStore {
 
   subscribe(listener: () => void): () => void {
     this._listeners.push(listener);
-    // Возвращаем функцию для отписки
     const unsubscribe = (): void => {
       const index = this._listeners.indexOf(listener);
       if (index > -1) {
@@ -39,6 +38,57 @@ export class RaceStore {
 
   private notify(): void {
     this._listeners.forEach(listener => listener());
+  }
+
+  /**
+   * Установить количество финишировавших машин
+   */
+  setFinishedCount(count: number): void {
+    if (count < 0) {
+      throw new Error('Finished count cannot be negative');
+    }
+    this._finishedCount = count;
+    this.notify();
+  }
+
+  /**
+   * Увеличить количество финишировавших машин на 1
+   */
+  incrementFinishedCount(): void {
+    this._finishedCount++;
+    this.notify();
+  }
+
+  /**
+   * Сбросить количество финишировавших машин
+   */
+  resetFinishedCount(): void {
+    this._finishedCount = 0;
+    this.notify();
+  }
+
+  /**
+   * Получить количество финишировавших машин
+   */
+  getFinishedCount(): number {
+    return this._finishedCount;
+  }
+
+  /**
+   * Проверить, все ли машины финишировали
+   */
+  isRaceComplete(): boolean {
+    const totalCars = garageStore.cars.length;
+    return totalCars > 0 && this._finishedCount >= totalCars;
+  }
+
+  /**
+   * Получить прогресс гонки в процентах
+   */
+  getRaceProgress(): number {
+    const totalCars = garageStore.cars.length;
+    if (totalCars === 0) return 0;
+    return (this._finishedCount / totalCars) * 100;
   }
 
   async startRace(): Promise<void> {
@@ -137,7 +187,7 @@ export class RaceStore {
     garageStore.updateCarState(carId, { status, time });
 
     if (!isBroken) {
-      this._finishedCount++;
+      this.incrementFinishedCount();
       this._winners.push({
         id: car.id,
         name: car.name,
