@@ -1,96 +1,176 @@
 import { garageStore } from '../store/garage.store';
 import { raceStore } from '../store/race.store';
-import type { Car } from '../types';
+import { CarItem } from './CarItem';
+import { Pagination } from './Pagination';
 
-export class CarItem {
-  private carId: number;
+export class Garage {
+  private container: HTMLElement;
+  private unsubscribeGarage: (() => void) | null = null;
+  private unsubscribeRace: (() => void) | null = null;
 
-  constructor(carId: number) {
-    this.carId = carId;
+  constructor(containerId: string) {
+    const element = document.getElementById(containerId);
+    if (!element) {
+      throw new Error(`Container with id "${containerId}" not found`);
+    }
+    this.container = element;
+
+    this.unsubscribeGarage = garageStore.subscribe(() => this.render());
+    this.unsubscribeRace = raceStore.subscribe(() => this.updateRaceState());
+    
+    // Первоначальный рендер
+    this.render();
   }
 
-  render(): string {
-    const car = garageStore.cars.find(c => c.id === this.carId);
-    if (!car) {
-      return '';
+  render(): void {
+    const cars = garageStore.cars;
+    const total = garageStore.total;
+    const page = garageStore.currentPage;
+    const totalPages = garageStore.totalPages;
+
+    if (cars.length === 0) {
+      this.container.innerHTML = `
+        <div class="garage-header">
+          <h2>🚗 Гараж</h2>
+          <span>${total} автомобилей</span>
+        </div>
+        <div class="empty-message">🚫 Нет автомобилей. Создайте первый!</div>
+      `;
+      return;
     }
 
-    const isRacing = raceStore.isRacing;
-    const position = car.position || 0;
-    const statusText = this.getStatusText(car);
-    const statusClass = car.status;
+    const carsHtml = cars.map((car) => {
+      const carItem = new CarItem(car.id);
+      return carItem.render();
+    }).join('');
 
-    return `
-      <div class="car-item ${statusClass}" data-car-id="${car.id}">
-        <div class="car-info">
-          <span class="car-name" style="color: ${car.color}">${this.escapeHtml(car.name)}</span>
-          <span class="car-id">ID: ${car.id}</span>
-        </div>
-        <div class="car-actions">
-          <button class="btn btn-primary btn-sm" 
-                  data-action="start" 
-                  data-car-id="${car.id}"
-                  ${isRacing || car.status === 'racing' ? 'disabled' : ''}>
-            ▶
-          </button>
-          <button class="btn btn-warning btn-sm" 
-                  data-action="stop" 
-                  data-car-id="${car.id}"
-                  ${!isRacing && car.status !== 'racing' ? 'disabled' : ''}>
-            ⏹
-          </button>
-          <button class="btn btn-danger btn-sm" 
-                  data-action="delete" 
-                  data-car-id="${car.id}"
-                  ${isRacing ? 'disabled' : ''}>
-            ✕
-          </button>
-        </div>
-        <div class="car-track" id="track-${car.id}">
-          <div class="finish-line"></div>
-          <div class="car-svg" id="car-${car.id}" style="left: ${position}%;">
-            ${this.getCarSvg(car.color)}
-          </div>
-        </div>
-        <div class="car-status ${statusClass}" id="status-${car.id}">
-          ${statusText}
-        </div>
+    this.container.innerHTML = `
+      <div class="garage-header">
+        <h2>🚗 Гараж</h2>
+        <span>${total} автомобилей</span>
       </div>
+      <div class="cars-list">
+        ${carsHtml}
+      </div>
+      <div id="pagination-container"></div>
     `;
-  }
 
-  private getStatusText(car: Car): string {
-    switch (car.status) {
-      case 'racing':
-        return '🏃 Гонка...';
-      case 'finished':
-        return `✅ ${(car.time || 0).toFixed(2)}с`;
-      case 'broken':
-        return '💥 Сломана';
-      default:
-        return '⏸ Остановлен';
+    const paginationContainer = document.getElementById('pagination-container');
+    if (paginationContainer) {
+      const pagination = new Pagination('pagination-container');
+      pagination.render(page, totalPages);
     }
+
+    this.addEventListeners();
+    this.updateRaceState();
   }
 
-  private getCarSvg(color: string): string {
-    return `
-      <svg viewBox="0 0 40 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="2" y="5" width="28" height="18" rx="3" fill="${color}" stroke="#333" stroke-width="1.5"/>
-        <rect x="22" y="2" width="12" height="8" rx="2" fill="${color}" stroke="#333" stroke-width="1.5"/>
-        <rect x="24" y="4" width="8" height="4" rx="1" fill="rgba(255,255,255,0.2)"/>
-        <circle cx="10" cy="23" r="5" fill="#222" stroke="#444" stroke-width="1"/>
-        <circle cx="10" cy="23" r="2.5" fill="#555"/>
-        <circle cx="26" cy="23" r="5" fill="#222" stroke="#444" stroke-width="1"/>
-        <circle cx="26" cy="23" r="2.5" fill="#555"/>
-        <rect x="4" y="10" width="18" height="8" rx="1" fill="rgba(255,255,255,0.15)"/>
-        <rect x="6" y="11" width="14" height="6" rx="0.5" fill="rgba(255,255,255,0.05)"/>
-      </svg>
-    `;
+  private addEventListeners(): void {
+    const buttons = this.container.querySelectorAll('[data-action]');
+    buttons.forEach((button) => {
+      const btn = button as HTMLButtonElement;
+      const newBtn = btn.cloneNode(true) as HTMLButtonElement;
+      btn.parentNode?.replaceChild(newBtn, btn);
+      
+      newBtn.addEventListener('click', (event) => {
+        const target = event.currentTarget as HTMLButtonElement;
+        const action = target.dataset.action;
+        const carId = target.dataset.carId;
+
+        if (!carId) return;
+
+        const id = parseInt(carId, 10);
+        if (isNaN(id)) return;
+
+        switch (action) {
+          case 'start':
+            this.startCar(id);
+            break;
+          case 'stop':
+            this.stopCar(id);
+            break;
+          case 'delete':
+            this.deleteCar(id);
+            break;
+          default:
+            break;
+        }
+      });
+    });
   }
 
-  private escapeHtml(text: string): string {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+  private async startCar(id: number): Promise<void> {
+    await raceStore.startCar(id);
+  }
+
+  private async stopCar(id: number): Promise<void> {
+    await raceStore.stopCar(id);
+  }
+
+  private async deleteCar(id: number): Promise<void> {
+    await garageStore.deleteCar(id);
+  }
+
+  private updateRaceState(): void {
+    const isRacing = raceStore.isRacing;
+    const cars = garageStore.cars;
+    
+    cars.forEach((car) => {
+      const carElement = document.querySelector(`[data-car-id="${car.id}"]`);
+      if (carElement) {
+        carElement.className = `car-item ${car.status}`;
+        
+        const statusElement = document.getElementById(`status-${car.id}`);
+        if (statusElement) {
+          let statusText = '';
+          switch (car.status) {
+            case 'racing':
+              statusText = '🏃 Гонка...';
+              break;
+            case 'finished':
+              statusText = `✅ ${(car.time || 0).toFixed(2)}с`;
+              break;
+            case 'broken':
+              statusText = '💥 Сломана';
+              break;
+            default:
+              statusText = '⏸ Остановлен';
+          }
+          statusElement.textContent = statusText;
+          statusElement.className = `car-status ${car.status}`;
+        }
+
+        const carSvg = document.getElementById(`car-${car.id}`);
+        if (carSvg) {
+          const position = car.position || 0;
+          carSvg.style.left = `${position}%`;
+        }
+
+        const buttons = carElement.querySelectorAll('[data-action]');
+        buttons.forEach((btn) => {
+          const button = btn as HTMLButtonElement;
+          const action = button.dataset.action;
+          
+          if (action === 'start') {
+            button.disabled = isRacing || car.status === 'racing';
+          } else if (action === 'stop') {
+            button.disabled = !isRacing && car.status !== 'racing';
+          } else if (action === 'delete') {
+            button.disabled = isRacing;
+          }
+        });
+      }
+    });
+  }
+
+  destroy(): void {
+    if (this.unsubscribeGarage) {
+      this.unsubscribeGarage();
+      this.unsubscribeGarage = null;
+    }
+    if (this.unsubscribeRace) {
+      this.unsubscribeRace();
+      this.unsubscribeRace = null;
+    }
   }
 }

@@ -1,0 +1,332 @@
+// ============================================================
+// COLOR VARIABLES
+// ============================================================
+
+// Primary colors
+$primary: #e94560;
+$primary-dark: #c73652;
+$primary-light: #ff6b81;
+
+// Secondary colors
+$secondary: #16213e;
+$secondary-light: #1a2a4a;
+$secondary-dark: #0f1a2e;
+
+// Background colors
+$background: #1a1a2e;
+$background-dark: #0a0a1a;
+$background-light: #2a2a4e;
+$background-card: #1a1a3e;
+$background-card-hover: #22224e;
+
+// Text colors
+$text: #eee;
+$text-light: #ffffff;
+$text-dark: #888888;
+$text-muted: #666666;
+
+// Status colors
+$success: #2ecc71;
+$success-dark: #27ae60;
+$success-light: #58d68d;
+
+$danger: #e74c3c;
+$danger-dark: #c0392b;
+$danger-light: #ec7063;
+
+$warning: #f39c12;
+$warning-dark: #e67e22;
+$warning-light: #f5b041;
+
+$info: #3498db;
+$info-dark: #2980b9;
+$info-light: #5dade2;
+
+// Race status colors
+$racing-color: #f1c40f;
+$finished-color: #2ecc71;
+$broken-color: #e74c3c;
+$stopped-color: #888888;
+
+// Track colors
+$track-background: #0a0a1a;
+$track-finish-line: rgba(255, 255, 255, 0.3);
+
+// Modal colors
+$modal-overlay: rgba(0, 0, 0, 0.7);
+$modal-background: #16213e;
+$modal-border: #e94560;
+
+// ============================================================
+// TYPOGRAPHY
+// ============================================================
+
+$font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+$font-family-monospace: 'Courier New', monospace;
+
+$font-size-xs: 11px;
+$font-size-sm: 12px;
+$font-size-md: 14px;
+$font-size-lg: 16px;
+$font-size-xl: 18px;
+$font-size-xxl: 22px;
+$font-size-h1: 32px;
+$font-size-h2: 24px;
+
+$font-weight-normal: 400;
+$font-weight-medium: 500;
+$font-weight-semibold: 600;
+$font-weight-bold: 700;
+
+// ============================================================
+// SPACING
+// ============================================================
+
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 12px;
+$spacing-lg: 20px;
+$spacing-xl: 30px;
+$spacing-xxl: 40px;
+
+// ============================================================
+// BORDER RADIUS
+// ============================================================
+
+$radius-sm: 4px;
+$radius-md: 8px;
+$radius-lg: 12px;
+$radius-xl: 16px;
+$radius-xxl: 24px;
+$radius-round: 50%;
+
+// ============================================================
+// SHADOWS
+// ============================================================
+
+$shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+$shadow-md: 0 4px 20px rgba(0, 0, 0, 0.5);
+$shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.6);
+$shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.8);
+
+$shadow-primary: 0 4px 15px rgba(233, 69, 96, 0.4);
+$shadow-success: 0 4px 15px rgba(46, 204, 113, 0.4);
+$shadow-danger: 0 4px 15px rgba(231, 76, 60, 0.4);
+$shadow-warning: 0 4px 15px rgba(243, 156, 18, 0.4);
+
+// ============================================================
+// BREAKPOINTS
+// ============================================================
+
+$breakpoint-mobile: 320px;
+$breakpoint-tablet: 768px;
+$breakpoint-desktop: 1024px;
+$breakpoint-wide: 1200px;
+$breakpoint-huge: 1400px;
+
+// ============================================================
+// TRANSITIONS
+// ============================================================
+
+$transition-fast: 0.15s ease;
+$transition-normal: 0.3s ease;
+$transition-slow: 0.5s ease;
+$transition-very-slow: 1s ease;
+
+$transition-bounce: 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+// ============================================================
+// Z-INDEX LAYERS
+// ============================================================
+
+$z-index-dropdown: 100;
+$z-index-sticky: 200;
+$z-index-modal: 1000;
+$z-index-tooltip: 1100;
+$z-index-loader: 1200;
+
+// ============================================================
+// CAR ANIMATION
+// ============================================================
+
+$car-transition-speed: 0.05s;
+$car-svg-width: 40px;
+$car-svg-height: 30px;
+
+// ============================================================
+// BUTTONS
+// ============================================================
+
+$btn-padding-y: 8px;
+$btn-padding-x: 20px;
+$btn-padding-y-sm: 4px;
+$btn-padding-x-sm: 12px;
+$btn-font-size: 14px;
+$btn-font-size-sm: 12px;
+
+// ============================================================
+// INPUTS
+// ============================================================
+
+$input-padding-y: 8px;
+$input-padding-x: 12px;
+$input-background: #0f3460;
+$input-border: #333333;
+$input-border-focus: $primary;
+$input-text-color: #fff;
+$input-placeholder-color: #888;
+
+// ============================================================
+// MODAL
+// ============================================================
+
+$modal-padding: 40px 50px;
+$modal-max-width: 500px;
+$modal-animation-duration: 0.5s;
+
+// ============================================================
+// TRACK
+// ============================================================
+
+$track-height: 40px;
+$track-min-width: 150px;
+$finish-line-width: 4px;
+
+// ============================================================
+// MIXINS
+// ============================================================
+
+// Flexbox mixins
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+// Text ellipsis
+@mixin text-ellipsis {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// Scrollbar styling
+@mixin custom-scrollbar($width: 6px, $color: $primary) {
+  &::-webkit-scrollbar {
+    width: $width;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: $background-dark;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: $color;
+    border-radius: 3px;
+  }
+}
+
+// Responsive mixins - ИСПРАВЛЕННАЯ ВЕРСИЯ
+@mixin mobile {
+  @media (max-width: #{$breakpoint-tablet - 1px}) {
+    @content;
+  }
+}
+
+@mixin tablet {
+  @media (min-width: $breakpoint-tablet) and (max-width: #{$breakpoint-desktop - 1px}) {
+    @content;
+  }
+}
+
+@mixin desktop {
+  @media (min-width: $breakpoint-desktop) {
+    @content;
+  }
+}
+
+@mixin responsive($breakpoint) {
+  @media (max-width: $breakpoint) {
+    @content;
+  }
+}
+
+// Animation keyframes
+@mixin keyframes($name) {
+  @keyframes #{$name} {
+    @content;
+  }
+}
+
+// Pseudo-element helper
+@mixin pseudo($content: '') {
+  content: $content;
+  position: absolute;
+}
+
+// Clearfix
+@mixin clearfix {
+  &::after {
+    content: '';
+    display: table;
+    clear: both;
+  }
+}
+
+// Transition helper
+@mixin transition($properties...) {
+  transition: $properties;
+}
+
+// Box shadow helper
+@mixin box-shadow($shadow) {
+  box-shadow: $shadow;
+}
+
+// Border radius helper
+@mixin border-radius($radius) {
+  border-radius: $radius;
+}
+
+// Gradient background
+@mixin gradient($from, $to) {
+  background: linear-gradient(135deg, $from, $to);
+}
+
+// Absolute positioning
+@mixin absolute($top: auto, $right: auto, $bottom: auto, $left: auto) {
+  position: absolute;
+  top: $top;
+  right: $right;
+  bottom: $bottom;
+  left: $left;
+}
+
+// Relative positioning
+@mixin relative($top: auto, $right: auto, $bottom: auto, $left: auto) {
+  position: relative;
+  top: $top;
+  right: $right;
+  bottom: $bottom;
+  left: $left;
+}
+
+// Fixed positioning
+@mixin fixed($top: auto, $right: auto, $bottom: auto, $left: auto) {
+  position: fixed;
+  top: $top;
+  right: $right;
+  bottom: $bottom;
+  left: $left;
+}
