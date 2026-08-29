@@ -1,14 +1,17 @@
+
+
 {
-  "name": "async-race-api",
+  "name": "async-race",
   "version": "1.0.0",
-  "description": "Fun with promises",
-  "main": "index.js",
+  "private": true,
   "scripts": {
-    "start": "node index.js"
+    "dev": "concurrently -k -n \"BACKEND,FRONTEND\" -c \"blue,green\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && node index.js",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install"
   },
-  "author": "mikhama",
-  "license": "MIT",
   "devDependencies": {
-    "json-server": "^0.16.3"
+    "concurrently": "^8.2.2"
   }
 }

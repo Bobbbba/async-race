@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import config from '../config';
 import type { Car, CarCreateData, CarUpdateData, PaginatedResponse } from '../types';
 
 export class GarageApi {
@@ -9,9 +10,8 @@ export class GarageApi {
   }
 
   async getPage(page: number = 1, limit: number = 7): Promise<PaginatedResponse<Car>> {
-    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}${this.basePath}?_page=${page}&_limit=${limit}`
-    );
+    const url = `${config.apiUrl}${this.basePath}?_page=${page}&_limit=${limit}`;
+    const response = await fetch(url);
     
     const items = await response.json();
     const total = parseInt(response.headers.get('X-Total-Count') || '0', 10);

@@ -1,9 +1,9 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import config from '../config';
 
 export class ApiClient {
     private baseUrl: string;
 
-    constructor(baseUrl: string = API_BASE_URL) {
+    constructor(baseUrl: string = config.apiUrl) {
         this.baseUrl = baseUrl;
     }
 
