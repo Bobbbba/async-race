@@ -28,8 +28,16 @@ export class GarageStore {
     return Math.ceil(this._total / this._limit) || 1;
   }
 
-  subscribe(listener: () => void): void {
+  subscribe(listener: () => void): () => void {
     this._listeners.push(listener);
+    // Возвращаем функцию для отписки
+    const unsubscribe = (): void => {
+      const index = this._listeners.indexOf(listener);
+      if (index > -1) {
+        this._listeners.splice(index, 1);
+      }
+    };
+    return unsubscribe;
   }
 
   private notify(): void {
@@ -70,7 +78,6 @@ export class GarageStore {
 
   async deleteCar(id: number): Promise<void> {
     await garageApi.delete(id);
-    // Если на странице больше нет машин, переключаемся на предыдущую
     if (this._cars.length === 0 && this._currentPage > 1) {
       this._currentPage--;
     }

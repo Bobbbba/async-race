@@ -25,8 +25,16 @@ export class RaceStore {
     return this._winners;
   }
 
-  subscribe(listener: () => void): void {
+  subscribe(listener: () => void): () => void {
     this._listeners.push(listener);
+    // Возвращаем функцию для отписки
+    const unsubscribe = (): void => {
+      const index = this._listeners.indexOf(listener);
+      if (index > -1) {
+        this._listeners.splice(index, 1);
+      }
+    };
+    return unsubscribe;
   }
 
   private notify(): void {
