@@ -1,5 +1,6 @@
 import { garageStore } from '../store/garage.store';
 import { raceStore } from '../store/race.store';
+import { appStore } from '../store/app.store'; // 
 
 export class Controls {
   private container: HTMLElement;
@@ -13,24 +14,30 @@ export class Controls {
     }
     this.container = element;
 
-    // Сохраняем функции отписки
     this.unsubscribeGarage = garageStore.subscribe(() => this.updateButtons());
     this.unsubscribeRace = raceStore.subscribe(() => this.updateButtons());
   }
 
   render(): void {
+    const savedName = appStore.carName || 'Tesla';
+    const savedColor = appStore.carColor || '#e94560';
+
     this.container.innerHTML = `
       <div class="controls">
         <div class="control-group">
           <label for="carName">Название</label>
-          <input type="text" id="carName" placeholder="Например: Tesla" value="Tesla" />
+          <input type="text" id="carName" placeholder="Например: Tesla" value="${this.escapeHtml(savedName)}" />
         </div>
         <div class="control-group">
           <label for="carColor">Цвет</label>
-          <input type="color" id="carColor" value="#e94560" />
+          <div class="color-picker-wrapper">
+            <input type="color" id="carColor" value="${savedColor}" />
+            <span class="color-preview" style="background-color: ${savedColor}"></span>
+            <span class="color-hex">${savedColor}</span>
+          </div>
         </div>
         <button class="btn btn-success" id="createBtn">➕ Создать</button>
-        <button class="btn btn-danger" id="generateBtn">🎲 Сгенерировать 100</button>
+        <button class="btn btn-danger" id="generateBtn">🎲 Генерировать 100</button>
         <div style="flex: 1;"></div>
         <button class="btn btn-primary" id="raceBtn">🏁 Гонка</button>
         <button class="btn btn-warning" id="resetBtn">⏹ Сброс</button>
@@ -47,6 +54,23 @@ export class Controls {
     const raceBtn = document.getElementById('raceBtn');
     const resetBtn = document.getElementById('resetBtn');
     const nameInput = document.getElementById('carName') as HTMLInputElement;
+    const colorInput = document.getElementById('carColor') as HTMLInputElement;
+
+    nameInput?.addEventListener('input', () => {
+      appStore.setCarName(nameInput.value);
+      garageStore.setEditName(nameInput.value);
+    });
+
+    colorInput?.addEventListener('input', () => {
+      const color = colorInput.value;
+      appStore.setCarColor(color);
+      garageStore.setEditColor(color);
+      
+      const preview = document.querySelector('.controls .color-preview') as HTMLElement;
+      const hex = document.querySelector('.controls .color-hex') as HTMLElement;
+      if (preview) preview.style.backgroundColor = color;
+      if (hex) hex.textContent = color;
+    });
 
     createBtn?.addEventListener('click', () => this.handleCreate());
     generateBtn?.addEventListener('click', () => this.handleGenerate());
@@ -60,33 +84,25 @@ export class Controls {
     });
   }
 
-  private handleCreate(): void {
+  private async handleCreate(): Promise<void> {
     const nameInput = document.getElementById('carName') as HTMLInputElement;
     const colorInput = document.getElementById('carColor') as HTMLInputElement;
     
     const name = nameInput.value.trim() || 'Без имени';
     const color = colorInput.value;
     
-    garageStore.createCar({ name, color });
+    await garageStore.createCar({ name, color });
+    
+    // Сохраняем значения для следующего создания
+    appStore.setCarName(name);
+    appStore.setCarColor(color);
   }
 
-  private handleGenerate(): void {
+  private async handleGenerate(): Promise<void> {
     if (raceStore.isRacing) return;
     
-    const brands = ['Tesla', 'BMW', 'Audi', 'Mercedes', 'Toyota', 'Ford', 'Chevrolet', 'Honda', 'Nissan', 'Volkswagen'];
-    const models = ['S', '3', 'X', 'Y', 'M5', 'RS6', 'G63', 'Civic', 'Accord', 'Camry', '911', '488'];
-    const colors = ['#e94560', '#2ecc71', '#3498db', '#f1c40f', '#9b59b6', '#1abc9c', '#e67e22', '#e74c3c', '#00b894', '#6c5ce7'];
-    
-    const count = 100;
-    for (let i = 0; i < count; i++) {
-      const randomBrand = brands[Math.floor(Math.random() * brands.length)];
-      const randomModel = models[Math.floor(Math.random() * models.length)];
-      const randomColor = colors[Math.floor(Math.random() * colors.length)];
-      
-      garageStore.createCar({
-        name: `${randomBrand} ${randomModel}`,
-        color: randomColor,
-      });
+    if (confirm('Сгенерировать 100 случайных автомобилей?')) {
+      await garageStore.generateCars(100);
     }
   }
 
@@ -115,6 +131,12 @@ export class Controls {
     if (resetBtn) resetBtn.disabled = isRacing;
     if (createBtn) createBtn.disabled = isRacing;
     if (generateBtn) generateBtn.disabled = isRacing;
+  }
+
+  private escapeHtml(text: string): string {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   destroy(): void {
