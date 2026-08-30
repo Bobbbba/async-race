@@ -10,7 +10,6 @@ export class RaceStore {
   private _finishedCount: number = 0;
   private _startTime: number = 0;
   private _winners: WinnerWithCar[] = [];
-  private _animations: Map<number, number> = new Map();
   private _animationFrames: Map<number, number> = new Map();
   private _listeners: (() => void)[] = [];
   private _carAnimations: Map<number, {
@@ -84,20 +83,30 @@ export class RaceStore {
    */
   async startCar(id: number): Promise<void> {
     const car = garageStore.cars.find(c => c.id === id);
-    if (!car || this._isRacing) {
+    if (!car) {
+      console.error(`Car with id ${id} not found`);
       return;
     }
 
-    // Если машина уже едет, ничего не делаем
+    // Если машина уже едет или гонка активна, ничего не делаем
+    if (this._isRacing) {
+      console.warn('Race is already in progress');
+      return;
+    }
+
     if (car.status === 'racing') {
+      console.warn('Car is already racing');
       return;
     }
 
     try {
-      // 1. Запускаем двигатель
-      const engineData = await engineApi.start(id);
+      console.log(`Starting car ${id}...`);
       
-      // 2. Обновляем состояние
+      // 1. Запускаем двигатель через API
+      const engineData = await engineApi.start(id);
+      console.log(`Engine started for car ${id}:`, engineData);
+      
+      // 2. Обновляем состояние автомобиля
       garageStore.updateCarState(id, {
         status: 'racing',
         position: 0,
@@ -111,6 +120,7 @@ export class RaceStore {
       await this.animateCar(id);
       
     } catch (error) {
+      console.error(`Failed to start car ${id}:`, error);
       garageStore.updateCarState(id, { status: 'stopped' });
       this.notify();
       throw error;
@@ -123,20 +133,24 @@ export class RaceStore {
   async stopCar(id: number): Promise<void> {
     const car = garageStore.cars.find(c => c.id === id);
     if (!car) {
+      console.error(`Car with id ${id} not found`);
       return;
     }
 
-    // Если машина уже остановлена, ничего не делаем
     if (car.status === 'stopped') {
+      console.warn('Car is already stopped');
       return;
     }
 
     try {
+      console.log(`Stopping car ${id}...`);
+
       // 1. Останавливаем анимацию
       this.stopAnimation(id);
 
-      // 2. Останавливаем двигатель
+      // 2. Останавливаем двигатель через API
       await engineApi.stop(id);
+      console.log(`Engine stopped for car ${id}`);
       
       // 3. Возвращаем машину в исходное положение
       garageStore.updateCarState(id, {
@@ -146,10 +160,8 @@ export class RaceStore {
         velocity: undefined,
       });
 
-      // 4. Удаляем из гонки если была
-      if (this._carAnimations.has(id)) {
-        this._carAnimations.delete(id);
-      }
+      // 4. Удаляем из анимаций
+      this._carAnimations.delete(id);
 
       this.notify();
     } catch (error) {
@@ -163,7 +175,13 @@ export class RaceStore {
    */
   private async animateCar(carId: number): Promise<void> {
     const car = garageStore.cars.find(c => c.id === carId);
-    if (!car || !car.velocity || car.status !== 'racing') {
+    if (!car || !car.velocity) {
+      console.error(`Car ${carId} has no velocity`);
+      return;
+    }
+
+    if (car.status !== 'racing') {
+      console.warn(`Car ${carId} is not in racing state`);
       return;
     }
 
@@ -172,6 +190,9 @@ export class RaceStore {
 
     const trackWidth = this.getTrackWidth(carId);
     const duration = this.calculateDuration(trackWidth, car.velocity);
+    
+    console.log(`Animating car ${carId} with velocity ${car.velocity}, duration ${duration}ms`);
+
     const startTime = performance.now();
 
     // Сохраняем данные анимации
@@ -182,15 +203,17 @@ export class RaceStore {
       endPosition: 100,
     });
 
-    // Запускаем анимацию с использованием requestAnimationFrame
-    const animate = async (timestamp: number): Promise<void> => {
+    // Запускаем анимацию
+    const animate = (timestamp: number): void => {
       const carData = garageStore.cars.find(c => c.id === carId);
       if (!carData || carData.status !== 'racing') {
+        console.log(`Animation stopped for car ${carId}: status is ${carData?.status}`);
         return;
       }
 
       const animData = this._carAnimations.get(carId);
       if (!animData) {
+        console.log(`Animation data not found for car ${carId}`);
         return;
       }
 
@@ -203,6 +226,10 @@ export class RaceStore {
 
       // Обновляем позицию
       garageStore.updateCarState(carId, { position });
+      
+      // Обновляем SVG позицию
+      this.updateCarPosition(carId, position);
+      
       this.notify();
 
       if (progress < 1) {
@@ -211,22 +238,27 @@ export class RaceStore {
         this._animationFrames.set(carId, frameId);
       } else {
         // Финиш!
+        console.log(`Car ${carId} finished!`);
         const time = (Date.now() - this._startTime) / 1000;
-        await this.finishCar(carId, time);
+        this.finishCar(carId, time);
       }
     };
 
     // Запускаем анимацию с небольшой задержкой
     const initialDelay = Math.random() * 300;
+    console.log(`Starting animation for car ${carId} with delay ${initialDelay}ms`);
+    
     setTimeout(() => {
       // Отправляем запрос drive
-      this.sendDriveRequest(carId).catch(() => {
+      this.sendDriveRequest(carId).catch((error) => {
+        console.error(`Drive request failed for car ${carId}:`, error);
         // Если запрос drive вернул 500, останавливаем анимацию
         this.stopAnimation(carId);
         garageStore.updateCarState(carId, { 
           status: 'broken',
           position: car.position || 0 
         });
+        this.updateCarStatus(carId, 'broken');
         this.notify();
       });
 
@@ -237,17 +269,53 @@ export class RaceStore {
   }
 
   /**
+   * Обновить позицию автомобиля в DOM
+   */
+  private updateCarPosition(carId: number, position: number): void {
+    const carSvg = document.getElementById(`car-${carId}`);
+    if (carSvg) {
+      carSvg.style.left = `${Math.min(position, 100)}%`;
+    }
+  }
+
+  /**
+   * Обновить статус автомобиля в DOM
+   */
+  private updateCarStatus(carId: number, status: string): void {
+    const statusElement = document.getElementById(`status-${carId}`);
+    if (statusElement) {
+      let statusText = '';
+      switch (status) {
+        case 'racing':
+          statusText = '🏃 Гонка...';
+          break;
+        case 'finished':
+          statusText = '✅ Финиш';
+          break;
+        case 'broken':
+          statusText = '💥 Сломана';
+          break;
+        default:
+          statusText = '⏸ Остановлен';
+      }
+      statusElement.textContent = statusText;
+      statusElement.className = `car-status ${status}`;
+    }
+  }
+
+  /**
    * Отправка запроса drive
    */
   private async sendDriveRequest(carId: number): Promise<void> {
     try {
-      await engineApi.drive(carId);
+      console.log(`Sending drive request for car ${carId}...`);
+      const result = await engineApi.drive(carId);
+      console.log(`Drive request successful for car ${carId}:`, result);
     } catch (error) {
-      // Если ошибка 500 - машина сломалась
       if (error instanceof Error && error.message.includes('broken down')) {
+        console.error(`Car ${carId} broke down!`);
         throw error;
       }
-      // Другие ошибки тоже пробрасываем
       throw error;
     }
   }
@@ -274,11 +342,18 @@ export class RaceStore {
     }
 
     const status = isBroken ? 'broken' : 'finished';
+    
+    console.log(`Car ${carId} finishing with status ${status}, time ${time}s`);
+    
     garageStore.updateCarState(carId, { 
       status, 
       position: isBroken ? car.position : 100,
       time: isBroken ? 0 : time 
     });
+
+    // Обновляем DOM
+    this.updateCarPosition(carId, isBroken ? car.position || 0 : 100);
+    this.updateCarStatus(carId, status);
 
     // Удаляем анимацию
     this.stopAnimation(carId);
@@ -314,7 +389,7 @@ export class RaceStore {
       c => c.status === 'finished' || c.status === 'broken'
     ).length;
 
-    if (finishedCars === totalCars) {
+    if (finishedCars === totalCars && this._isRacing) {
       this.endRace();
     }
 
@@ -325,6 +400,7 @@ export class RaceStore {
    * Завершить гонку
    */
   private endRace(): void {
+    console.log('Race ended!');
     this._isRacing = false;
     this.notify();
   }
@@ -342,6 +418,8 @@ export class RaceStore {
       throw new Error('Race already in progress');
     }
 
+    console.log('Starting race with', cars.length, 'cars');
+
     this._isRacing = true;
     this._finishedCount = 0;
     this._winners = [];
@@ -355,15 +433,24 @@ export class RaceStore {
     const startPromises = cars.map(async (car) => {
       try {
         const engineData = await engineApi.start(car.id);
+        console.log(`Car ${car.id} engine started:`, engineData);
+        
         garageStore.updateCarState(car.id, {
           status: 'racing',
           position: 0,
           velocity: engineData.velocity,
           time: 0,
         });
+        
+        // Обновляем DOM
+        this.updateCarPosition(car.id, 0);
+        this.updateCarStatus(car.id, 'racing');
+        
         return { ...car, velocity: engineData.velocity };
-      } catch {
+      } catch (error) {
+        console.error(`Failed to start car ${car.id}:`, error);
         garageStore.updateCarState(car.id, { status: 'stopped' });
+        this.updateCarStatus(car.id, 'stopped');
         return null;
       }
     });
@@ -372,6 +459,8 @@ export class RaceStore {
       (car): car is Car & { velocity: number } => 
         car !== null && car.velocity !== undefined
     );
+
+    console.log('Started cars:', startedCars.length);
 
     // Запускаем анимацию для каждой машины
     for (const car of startedCars) {
@@ -383,6 +472,8 @@ export class RaceStore {
    * Сброс гонки
    */
   async resetRace(): Promise<void> {
+    console.log('Resetting race...');
+    
     this._isRacing = false;
     this._finishedCount = 0;
     this._startTime = 0;
@@ -411,6 +502,8 @@ export class RaceStore {
         time: 0,
         velocity: undefined,
       });
+      this.updateCarPosition(car.id, 0);
+      this.updateCarStatus(car.id, 'stopped');
     });
 
     this.notify();
@@ -420,9 +513,11 @@ export class RaceStore {
    * Рассчитать длительность анимации
    */
   private calculateDuration(trackWidth: number, velocity: number): number {
-    const pixels = trackWidth;
-    const timeInSeconds = pixels / (velocity * 1.5);
-    return Math.max(timeInSeconds * 1000, 1000);
+    // Базовая формула: время = расстояние / скорость
+    // Используем коэффициент для более реалистичной анимации
+    const baseDuration = (trackWidth / velocity) * 1000;
+    // Ограничиваем длительность от 1 до 8 секунд
+    return Math.max(1000, Math.min(8000, baseDuration));
   }
 
   /**
@@ -431,13 +526,14 @@ export class RaceStore {
   private getTrackWidth(carId: number): number {
     const trackElement = document.getElementById(`track-${carId}`);
     if (trackElement) {
-      return Math.max(trackElement.clientWidth - 50, 200);
+      const width = trackElement.clientWidth - 50;
+      return Math.max(width, 200);
     }
     return 500;
   }
 
   /**
-   * Easing функция для плавного движения
+   * Easing функция для плавного движения (ease-in-out)
    */
   private easeInOut(t: number): number {
     return t < 0.5
